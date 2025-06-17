@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset
+from tqdm import tqdm
 
 
 # --- 1. Model Definitions ---
@@ -79,7 +80,7 @@ class VAE(nn.Module):
 
 # --- 2. Data Handling ---
 
-class ParquetDataset(Dataset):
+class Data(Dataset):
     """
     Custom Dataset for loading data from a pandas DataFrame.
     """
@@ -101,9 +102,16 @@ def train(model, data_loader, device, epochs=20):
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     model.train()  # Set the model to training mode
 
-    for epoch in range(epochs):
+    # Create progress bar for epochs
+    epoch_pbar = tqdm(range(epochs), desc="Training Progress")
+
+    for epoch in epoch_pbar:
         total_loss = 0
-        for x, y in data_loader:
+
+        # Create progress bar for batches within each epoch
+        batch_pbar = tqdm(data_loader, desc=f"Epoch {epoch + 1}/{epochs}", leave=False)
+
+        for x, y in batch_pbar:
             # Move data to the specified device (e.g., GPU)
             x = x.to(device)
             y = y.to(device)
@@ -123,7 +131,14 @@ def train(model, data_loader, device, epochs=20):
 
             total_loss += loss.item()
 
+            # Update batch progress bar with current loss
+            batch_pbar.set_postfix({'Loss': f'{loss.item():.4f}'})
+
         avg_loss = total_loss / len(data_loader.dataset)
+
+        # Update epoch progress bar with average loss
+        epoch_pbar.set_postfix({'Avg Loss': f'{avg_loss:.4f}'})
+
         print(f"Epoch [{epoch + 1}/{epochs}], Average Loss: {avg_loss:.4f}")
 
     return model
